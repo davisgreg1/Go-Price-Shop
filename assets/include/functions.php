@@ -3,7 +3,7 @@ function logActivity($statuscode,$pagename,$cust_id,$store_id){
 global $test_db;
 global $path;
 date_default_timezone_set("America/New_York");
-$timestamp = date("Y-m-d h:i:sa");
+$timestamp = date("Y-m-d H:i:s");
 $ipproxy = "";
 if($store_id == "NA"){
 	$store_id = "";
@@ -42,7 +42,7 @@ global $test_db;
 global $path;
 $ipproxy = "";
 date_default_timezone_set("America/New_York");
-$timestamp = date("Y-m-d h:i:sa");
+$timestamp = date("Y-m-d H:i:s");
 if(isset($_SERVER['HTTP_X_FORWARDED_FOR'])){
 	$ipproxy = $_SERVER['HTTP_X_FORWARDED_FOR'];
 	}
@@ -72,7 +72,7 @@ function verifyUser(){
 				exit();
         } else {
 			date_default_timezone_set("America/New_York");
-			$timestamp = date("Y-m-d h:i:sa");
+			$timestamp = date("Y-m-d H:i:s");
 			$to_time = strtotime($timestamp);
 			$from_time = strtotime($lastlogin);
 			$numofmin = round(abs($to_time - $from_time) / 60,2);
@@ -100,7 +100,7 @@ function verifyAdmin(){
 				exit();
         } else {
 			date_default_timezone_set("America/New_York");
-			$timestamp = date("Y-m-d h:i:sa");
+			$timestamp = date("Y-m-d H:i:s");
 			$to_time = strtotime($timestamp);
 			$from_time = strtotime($lastlogin);
 			$numofmin = round(abs($to_time - $from_time) / 60,2);

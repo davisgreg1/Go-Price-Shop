@@ -2,20 +2,28 @@
 session_start();
 $errMessage = array();
 $registerError = array();
+$code = "";
+if(isset($_GET['code'])){
+	$code = $_GET['code'];
+}
 if(isset($_SESSION['errmessage'])){
 	$errMessage[] = $_SESSION['errmessage'];
 }
-require 'php/db.php';
+if($code == "register"){
+	$_SESSION['showregister'] = TRUE;
+	}
+require 'assets/include/db.php';
 global $path;
 $username = $verusername = $password = $verpassword = "";
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
-require 'php/mail/Exception.php';
-require 'php/mail/PHPMailer.php';
-require 'php/mail/SMTP.php';
+require 'assets/include/mail/Exception.php';
+require 'assets/include/mail/PHPMailer.php';
+require 'assets/include/mail/SMTP.php';
 $fname = $lname = $address = $street_number = $city = $street_name = $state = $zipcode = $county = $country = $address2 = $phonenum = $email = $dob = $verusername = $verpassword = $gender = "";
 if(isset($_SESSION['username']) && !empty($_SESSION['username'])){
 	header("Location:dashboard.php");
+	exit();
 } ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -49,8 +57,24 @@ if(isset($_SESSION['username']) && !empty($_SESSION['username'])){
 		$("#dob2").mask("99-99-9999",{placeholder:"mm-dd-yyyy"});
 		});
  </script>
+ <style>
+ .pac-container {
+    background-color: #FFF;
+    z-index: 20;
+    position: fixed;
+    display: inline-block;
+    float: left;
+}
+.modal{
+    z-index: 20;
+}
+.modal-backdrop{
+    z-index: 10;
+}​
+</style>
   </head>
   <body>
+	<script src="assets/js/fb.js"></script>
   <?php if(isset($_SESSION['showregister'])){ ?>
   <script type="text/javascript">
     $(window).on('load',function(){
@@ -102,10 +126,12 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
 			$_SESSION['emailhash'] = $resultauth['emailhash'];
 			$_SESSION['user'] = test_input($_POST['username']);
 			header("Location:accountpending.php");
+			exit();
 		}
 		elseif($resultauth['passreset']=="TRUE"){
 			$_SESSION['status'] = "pass";
 			header("Location:accountpending.php");
+			exit();
 		} else {
 		$custid = $resultauth['id'];
 		$username = test_input($_POST['username']);
@@ -114,14 +140,16 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
 		$_SESSION['usertype'] = $result['usertype'];
 		$_SESSION['fname'] = $result['fname'];
 		date_default_timezone_set("America/New_York");
-		$timestamp = date("Y-m-d h:i:sa");
+		$timestamp = date("Y-m-d H:i:s");
 		$query = "UPDATE cust_data SET signedin = 'TRUE', timestamp = '$timestamp' WHERE id = '$custid'";
 		$result = $test_db->query($query);
 		logActivity("1","login",$custid,"NA");
 		if($redirect) {
 			header("Location:".$path.$redirect);
+			exit();
 		} else {
 			header("Location:".$path."dashboard.php");
+			exit();
 		}
 		exit();
 		}
@@ -331,7 +359,7 @@ try {
 	logError("2","user-register","NA", $errmess);
 	}
 		date_default_timezone_set("America/New_York");
-		$timestamp = date("Y-m-d h:i:sa");
+		$timestamp = date("Y-m-d H:i:s");
 		$encrypted = encryptIt( $password );
 
         $query = "INSERT INTO cust_data (fname, lname, address, address2, cid, emailhash, phonenum, email, username, passwd, gender, ethnicity, birthdate, registerdate, timestamp) VALUES('$fname', '$lname', '$address', '$address2', '$cid', '$emailhash', '$phonenum', '$email', '$username', '$encrypted', '$gender', '$ethnicity', '$dob', '$timestamp', '$timestamp')";
@@ -345,9 +373,9 @@ try {
 		$cust_id = $resultid['id'];
 		$query = "INSERT INTO pointsystem (cust_id, points, cur_level) VALUES('$cust_id', '$points', '$curlevel')";
         $result = $test_db->query($query);
-		$_SESSION['emailhash'] = $emailhash;
-		$_SESSION['user'] = $username;
+		unset($_SESSION['showregister']);
 		header("Location:accountpending.php");
+		exit();
         } else {
 		logError("2","user-register","NA", $errmess);
 		}
@@ -390,7 +418,7 @@ if(count($errMessage) > 0){ ?>
     <?php unset($_SESSION['errmessage']); } ?>
 
 		      <form class="form-login" method="post" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]."?code=login");?>">
-		        <h2 class="form-login-heading">sign in now</h2>
+		        <h2 class="form-login-heading">sign in now <div id="fb_status"></div></h2>
 		        <div class="login-wrap">
 		            <input type="text" class="form-control" name="username" id="username" placeholder="User ID" autofocus>
 		            <br>
@@ -407,11 +435,9 @@ if(count($errMessage) > 0){ ?>
 		            <button class="btn btn-theme btn-block" type="submit"><i class="fa fa-lock"></i> SIGN IN</button>
 					</form>
 		            <hr>
-
-		            <div class="login-social-link centered">
-		            <p>or you can sign in via your social network</p>
-		                <button class="btn btn-facebook" type="submit"><i class="fa fa-facebook"></i> Facebook</button>
-		                <button class="btn btn-twitter" type="submit"><i class="fa fa-twitter"></i> Twitter</button>
+								<div class="login-social-link centered">
+		            	<p>or you can sign in via your social network</p>
+									<button class="btn btn-facebook" type="button" onclick="Login();"><i class="fa fa-facebook"></i> Facebook</button>
 		            </div>
 		            <div class="registration">
 		                Don't have an account yet?<br/>
@@ -433,27 +459,22 @@ if(count($errMessage) > 0){ ?>
 		                      <div class="modal-body">
 							  <span class="pull-left">Please fill out all fields listed below.</span>
 							  <span class="pull-right"><a href="javascript:;" class="btn btn-info" id="register-info">Why do we need this info? - Click here</a></span><br><br>
-	<?php if(!empty($registerError[0])){ ?>
-	<div class="form-group has-error has-feedback">
-	<label class="control-label" for="inputError0"><?php echo $registerError[0]; ?></label>
-	<input type="text" name="fname" id="inputError0" value="<?php echo $fname;?>" placeholder="First Name" class="form-control"/>
-	<span class="glyphicon glyphicon-remove form-control-feedback"></span>
-	</div>
-	<?php } else { ?>
-<div class="form-group"><input type="text" name="fname" id="fname" value="<?php echo $fname;?>" placeholder="First Name" class="form-control"/></div>
+	<?php if(!empty($registerError[0])){
+	unset($_SESSION['showregister']);
+	showErrors($registerError[0],"fname",$fname,"First Name");
+	 } else { ?>
+<div class="form-group"><input type="text" name="fname" id="fname" value="<?php echo $fname;?>" placeholder="First Name" class="form-control" autocomplete="off"/></div>
 	<?php }
-	if(!empty($registerError[1])){ ?>
-	<div class="form-group has-error has-feedback">
-	<label class="control-label" for="inputError1"><?php echo $registerError[1]; ?></label>
-	<input type="text" name="lname" id="inputError1" value="<?php echo $lname;?>" placeholder="Last Name" class="form-control"/>
-	<span class="glyphicon glyphicon-remove form-control-feedback"></span>
-	</div>
-	<?php } else { ?>
-<div class="form-group"><input type="text" name="lname" id="lname" value="<?php echo $lname;?>" placeholder="Last Name" class="form-control"/></div>
+	if(!empty($registerError[1])){
+	unset($_SESSION['showregister']);
+    showErrors($registerError[1],"lname",$lname,"Last Name");
+	} else { ?>
+<div class="form-group"><input type="text" name="lname" id="lname" value="<?php echo $lname;?>" placeholder="Last Name" class="form-control" autocomplete="off"/></div>
 	<?php }
-	 if(!empty($registerError[2])){ ?>
+	 if(!empty($registerError[2])){
+	 unset($_SESSION['showregister']);?>
 	<div class="form-group has-error has-feedback">
-	<label class="control-label" for="autocomplete"><?php echo $registerError[2]; ?></label>
+	<label class="control-label" for="autoaddress"><?php echo $registerError[2]; ?></label>
 	<input id="autocomplete" class="form-control" placeholder="Enter your address" onFocus="geolocate()" type="text" value="<?php if($address!='')echo $street_number . " " . $street_name . ", " . $city . ", " . $state . ", " . $country; ?>">
 									<span class="glyphicon glyphicon-remove form-control-feedback"></span>
 	</div>
@@ -474,35 +495,27 @@ if(count($errMessage) > 0){ ?>
                                     <input type="hidden" id="country" name="country" value="<?php echo $country;?>" >
                                     <input type="hidden" id="administrative_area_level_2" name="county" value="<?php echo $county;?>" ></div>
 	<?php } ?>
-<div class="form-group"><input type="text" name="address2" value="<?php echo $address2;?>" placeholder="Apt #, Suite #, etc" class="form-control"/></div>
-	<?php if(!empty($registerError[4])){ ?>
-	<div class="form-group has-error has-feedback">
-	<label class="control-label" for="phonenum"><?php echo $registerError[4]; ?></label>
-	<input type="text" name="phonenum" id="phonenum" value="<?php echo $phonenum;?>" placeholder="Phone Number" class="form-control"/>
-	<span class="glyphicon glyphicon-remove form-control-feedback"></span>
-	</div>
-	<?php } else { ?>
-<div class="form-group"><input type="text" name="phonenum" id="phonenum" value="<?php echo $phonenum;?>" placeholder="Phone Number" class="form-control"/></div>
+<div class="form-group"><input type="text" name="address2" value="<?php echo $address2;?>" placeholder="Apt #, Suite #, etc" class="form-control" autocomplete="off"/></div>
+	<?php if(!empty($registerError[4])){
+	unset($_SESSION['showregister']);
+	showErrors($registerError[4],"phonenum",$phonenum,"Phone Number");
+	} else { ?>
+<div class="form-group"><input type="text" name="phonenum" id="phonenum" value="<?php echo $phonenum;?>" placeholder="Phone Number" class="form-control" autocomplete="off"/></div>
 	<?php }
-	if(!empty($registerError[5])){ ?>
-	<div class="form-group has-error has-feedback">
-	<label class="control-label" for="email"><?php echo $registerError[5]; ?></label>
-	<input type="text" name="email" id="email" value="<?php echo $email;?>" placeholder="Email" class="form-control"/>
-	<span class="glyphicon glyphicon-remove form-control-feedback"></span>
-	</div>
-	<?php } else { ?>
-<div class="form-group"><input type="text" name="email" id="email" value="<?php echo $email;?>" placeholder="Email" class="form-control"/></div>
+	if(!empty($registerError[5])){
+	unset($_SESSION['showregister']);
+	showErrors($registerError[5],"email",$email,"Email");
+    } else { ?>
+<div class="form-group"><input type="text" name="email" id="email" value="<?php echo $email;?>" placeholder="Email" class="form-control" autocomplete="off"/></div>
 	<?php }
-	if(!empty($registerError[6])){ ?>
-	<div class="form-group has-error has-feedback">
-	<label class="control-label" for="dob2"><?php echo $registerError[6]; ?></label>
-	<input type="text" name="dob2" id="dob2" value="<?php echo $dob;?>" placeholder="Date of Birth" class="form-control"/>
-	<span class="glyphicon glyphicon-remove form-control-feedback"></span>
-	</div>
-	<?php } else { ?>
-<div class="form-group"><input type="text" name="dob2" id="dob2" value="<?php echo $dob;?>" placeholder="Date of Birth" class="form-control"/></div>
+	if(!empty($registerError[6])){
+	unset($_SESSION['showregister']);
+	showErrors($registerError[6],"dob2",$dob,"Date of Birth");
+     } else { ?>
+<div class="form-group"><input type="text" name="dob2" id="dob2" value="<?php echo $dob;?>" placeholder="Date of Birth" class="form-control" autocomplete="off"/></div>
 	<?php }
-	if(!empty($registerError[7])){ ?>
+	if(!empty($registerError[7])){
+	unset($_SESSION['showregister']);?>
 	<div class="form-group has-error has-feedback">
 	<label class="control-label" for="ethnicity"><?php echo $registerError[7]; ?></label>
 	<fieldset>
@@ -565,9 +578,10 @@ if(count($errMessage) > 0){ ?>
   </select>
 </fieldset></div>
 	<?php }
-	if(!empty($registerError[8])){ ?>
+	if(!empty($registerError[8])){
+	unset($_SESSION['showregister']);?>
 	<div class="form-group has-error has-feedback">
-	<label class="control-label"><?php echo $registerError[8]; ?></label>
+	<label class="control-label"><?php echo $registerError[8]; ?></label><br>
 	<input type="radio" value="Male" id="male" name="gender" <?php if (isset($_POST['gender'])){ if($_POST['gender'] == 'Male') echo 'checked'; } ?>>
 	<label for="male">Male</label>
 	<input type="radio" value="Female" id="female" name="gender" <?php if (isset($_POST['gender'])){ if($_POST['gender'] == 'Female') echo 'checked'; } ?>>
@@ -584,7 +598,8 @@ if(count($errMessage) > 0){ ?>
 						<input type="radio" value="refused-answer" id="no-answer" name="gender" <?php if (isset($_POST['gender'])){ if($_POST['gender'] == 'refused-answer') echo 'checked'; } ?>>
 						<label for="no-answer">Prefer Not to Answer</label></div>
 	<?php }
-	if(!empty($registerError[9])){ ?>
+	if(!empty($registerError[9])){
+	unset($_SESSION['showregister']);?>
 	<div class="form-group has-error has-feedback">
 	<label class="control-label" for="usern"><?php echo $registerError[9]; ?></label>
 	<input type="text" name="usern" id="usern" value="<?php echo $username;?>" placeholder="Username" class="form-control" autocomplete="false"/>
@@ -593,7 +608,8 @@ if(count($errMessage) > 0){ ?>
 	<?php } else { ?>
 <div class="form-group"><input type="text" name="usern" id="usern" value="<?php echo $username;?>" placeholder="Username" class="form-control" autocomplete="false"/></div>
 	<?php }
-	if(!empty($registerError[10])){ ?>
+	if(!empty($registerError[10])){
+	unset($_SESSION['showregister']);?>
 	<div class="form-group has-error has-feedback">
 	<label class="control-label" for="ver-username"><?php echo $registerError[10]; ?></label>
 	<input type="text" name="ver-username" id="ver-username" value="<?php echo $verusername;?>" placeholder="Verify Username" class="form-control" autocomplete="off"/>
@@ -602,7 +618,8 @@ if(count($errMessage) > 0){ ?>
 	<?php } else { ?>
 <div class="form-group"><input type="text" name="ver-username" id="ver-username" value="<?php echo $verusername;?>" placeholder="Verify Username" class="form-control" autocomplete="off"/></div>
 	<?php }
-	if(!empty($registerError[11])){ ?>
+	if(!empty($registerError[11])){
+	unset($_SESSION['showregister']);?>
 	<div class="form-group has-error has-feedback">
 	<label class="control-label" for="passw"><?php echo $registerError[11]; ?></label>
 	<input type="password" name="passw" id="passw" placeholder="Password" autocomplete="false" class="form-control"/>
@@ -611,7 +628,8 @@ if(count($errMessage) > 0){ ?>
 	<?php } else { ?>
 <div class="form-group"><input type="password" name="passw" id="passw" placeholder="Password" autocomplete="false" class="form-control"/></div>
 	<?php }
-	if(!empty($registerError[12])){ ?>
+	if(!empty($registerError[12])){
+	unset($_SESSION['showregister']);?>
 	<div class="form-group has-error has-feedback">
 	<label class="control-label" for="ver-password"><?php echo $registerError[12]; ?></label>
 	<input type="password" name="ver-password" id="ver-password" placeholder="Verify Password" autocomplete="off" class="form-control"/>
